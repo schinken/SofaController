@@ -95,25 +95,26 @@ void drive(int cmd1, int cmd2) {
   steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
   speed = speed * (1.0 - FILTER) + cmd2 * FILTER;
 
-  speedR = constrain(speed * SPEED_COEFFICIENT - steer * STEER_COEFFICIENT, -1000, 1000);
-  speedL = constrain(speed * SPEED_COEFFICIENT + steer * STEER_COEFFICIENT, -1000, 1000);
+  steerCoefficient = mapf(constrain(cmd2, 0, 1000), 0, 1000, STEER_COEFFICIENT_MAX, STEER_COEFFICIENT_MIN);
+
+  speedR = constrain(speed * SPEED_COEFFICIENT - steer * steerCoefficient, -1000, 1000);
+  speedL = constrain(speed * SPEED_COEFFICIENT + steer * steerCoefficient, -1000, 1000);
 
   setSpeedLeft(speedL);
   setSpeedRight(speedR);
 }
 
 void loop() {
-  //put main code here
-
+  delay(50);
 
   if (nunchuk.update()) {
+    consecutiveFails = 0;
+
     cmd1 = constrain((nunchuk.analogX - 127) * 8, -500, 1000);
     cmd2 = constrain((nunchuk.analogY - 128) * 8, -500, 1000);
 
-    steerCoefficient = mapf(constrain(cmd2, 0, 1000), 0, 1000, STEER_COEFFICIENT_MAX, STEER_COEFFICIENT_MIN);
-
     if (cmd2 < 0) {
-      cmd1 *= -1
+      cmd1 *= -1;
     }
 
     Serial.print("X: ");
@@ -122,54 +123,39 @@ void loop() {
     Serial.print("Y: ");
     Serial.println(nunchuk.analogY);
 
-    consecutiveFails = 0;
+    return drive(cmd1, cmd2);
+  } 
 
-    drive(cmd1, cmd2);
-  } else {
+  consecutiveFails++;
+  Serial.println("FAIL!");
+  delay(20);
 
-    consecutiveFails++;
-    Serial.println("FAIL!");
-    delay(20);
+  if (consecutiveFails > 15) {
 
-    if (consecutiveFails > 15) {
+    Serial.println("SAFETY");
+    
+    while (!nunchuk.update()) {
 
-      Serial.println("SAFETY");
-      
-
-      while (!nunchuk.update()) {
-
-        if (cmd1 < 0) {
-          cmd1 = max(0, cmd1 + 10);
-        } else if (cmd1 > 0) {
-          cmd1 = min(0, cmd1 - 10);
-        }
-
-        if (cmd2 < 0) {
-          cmd2 = max(0, cmd2 + 10);
-        } else if (cmd2 > 0) {
-          cmd2 = min(0, cmd2 - 10);
-        }
-
-        drive(cmd1, cmd2);
-        delay(6);
+      if (cmd1 < 0) {
+        cmd1 = max(0, cmd1 + 10);
+      } else if (cmd1 > 0) {
+        cmd1 = min(0, cmd1 - 10);
       }
 
-      delay(1000);
-      nunchuk.begin();
-      delay(1000);
+      if (cmd2 < 0) {
+        cmd2 = max(0, cmd2 + 10);
+      } else if (cmd2 > 0) {
+        cmd2 = min(0, cmd2 - 10);
+      }
+
+      drive(cmd1, cmd2);
+      delay(6);
     }
+
+    delay(1000);
+    nunchuk.begin();
+    delay(1000);
   }
-
-  steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
-  speed = speed * (1.0 - FILTER) + cmd2 * FILTER;
-
-  speedR = constrain(speed * SPEED_COEFFICIENT - steer * steerCoefficient, -1000, 1000);
-  speedL = constrain(speed * SPEED_COEFFICIENT + steer * steerCoefficient, -1000, 1000);
-
-  setSpeedLeft(speedL);
-  setSpeedRight(speedR);
-
-  delay(50);
 }
 
 ISR(TIMER1_COMPA_vect) {
