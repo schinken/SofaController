@@ -20,10 +20,10 @@
 #define FILTER 0.1
 #define STEER_COEFFICIENT_MIN 0.30
 #define STEER_COEFFICIENT_MAX 0.55
-
-float STEER_COEFFICIENT = 0.4;
 #define SPEED_COEFFICIENT 0.4
 
+
+float steerCoefficient = 0.4;
 
 byte currentChannelNumber;
 uint16_t elapsedUs;
@@ -110,7 +110,7 @@ void loop() {
     cmd1 = constrain((nunchuk.analogX - 127) * 8, -500, 1000);
     cmd2 = constrain((nunchuk.analogY - 128) * 8, -500, 1000);
 
-    STEER_COEFFICIENT = mapf(constrain(cmd2, 0, 1000), 0, 1000, STEER_COEFFICIENT_MAX, STEER_COEFFICIENT_MIN);
+    steerCoefficient = mapf(constrain(cmd2, 0, 1000), 0, 1000, STEER_COEFFICIENT_MAX, STEER_COEFFICIENT_MIN);
 
     if (cmd2 < 0) {
       cmd1 *= -1
@@ -163,8 +163,8 @@ void loop() {
   steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
   speed = speed * (1.0 - FILTER) + cmd2 * FILTER;
 
-  speedR = constrain(speed * SPEED_COEFFICIENT - steer * STEER_COEFFICIENT, -1000, 1000);
-  speedL = constrain(speed * SPEED_COEFFICIENT + steer * STEER_COEFFICIENT, -1000, 1000);
+  speedR = constrain(speed * SPEED_COEFFICIENT - steer * steerCoefficient, -1000, 1000);
+  speedL = constrain(speed * SPEED_COEFFICIENT + steer * steerCoefficient, -1000, 1000);
 
   setSpeedLeft(speedL);
   setSpeedRight(speedR);
