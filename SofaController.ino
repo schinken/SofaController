@@ -43,10 +43,6 @@ ArduinoNunchuk nunchuk = ArduinoNunchuk();
 
 uint16_t consecutiveFails = 0;
 
-inline void setValue(uint8_t channel, uint16_t value) {
-  PPM_CHANNELS[channel] = constrain(value, PPM_MIN_VALUE, PPM_MAX_VALUE);
-}
-
 float mapf(float x, float in_min, float in_max, float out_min, float out_max){
  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
