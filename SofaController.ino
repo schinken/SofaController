@@ -53,8 +53,8 @@ void setPPM(uint8_t channel, uint16_t value) {
   PPM_CHANNELS[channel] = constrain(value, PPM_MIN_VALUE, PPM_MAX_VALUE);
 }
 
-float mapf(float x, float in_min, float in_max, float out_min, float out_max){
- return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+float mapf(float x, float in_min, float in_max, float out_min, float out_max) {
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
 void setup() {
@@ -93,7 +93,7 @@ void drive(int cmd1, int cmd2) {
   speed = speed * (1.0 - FILTER) + cmd2 * FILTER;
 
   // Change steering behaviour depending on speed
-  steerCoefficient = mapf(constrain(speed, 0, 1000), 0, 1000, STEER_COEFFICIENT_MAX, STEER_COEFFICIENT_MIN);
+  steerCoefficient = mapf(constrain(abs(speed), 0, 1000), 0, 1000, STEER_COEFFICIENT_MAX, STEER_COEFFICIENT_MIN);
 
   speedR = constrain(speed * SPEED_COEFFICIENT - steer * steerCoefficient, MAX_SPEED_BACKWARD, MAX_SPEED_FORWARD);
   speedL = constrain(speed * SPEED_COEFFICIENT + steer * steerCoefficient, MAX_SPEED_BACKWARD, MAX_SPEED_FORWARD);
@@ -120,7 +120,7 @@ void loop() {
     }
 
     return drive(cmd1, cmd2);
-  } 
+  }
 
   // Failed to read nunchuck!
   consecutiveFails++;
@@ -129,11 +129,11 @@ void loop() {
 
   if (consecutiveFails > 15) {
     Serial.println("SAFETY");
-    
+
     // Ramp speed down as long as there's no signal
     while (!nunchuk.update()) {
-      cmd1 = (cmd1 < 0) ? max(0, cmd1 + 10) : min(0, cmd1 -10);
-      cmd2 = (cmd2 < 0) ? max(0, cmd2 + 10) : min(0, cmd2 -10);
+      cmd1 = (cmd1 < 0) ? max(0, cmd1 + 10) : min(0, cmd1 - 10);
+      cmd2 = (cmd2 < 0) ? max(0, cmd2 + 10) : min(0, cmd2 - 10);
 
       drive(cmd1, cmd2);
       delay(6);
