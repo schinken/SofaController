@@ -72,10 +72,7 @@ void setup() {
   pinMode(OUTPUT_PIN, OUTPUT);
   digitalWrite(OUTPUT_PIN, LOW);
 
-  state = true;
-  elapsedUs = 0;
-  currentChannelNumber = 0;
-
+  // PPM SIGNAL GENERATION interrupt setup
   cli();
   TCCR1A = 0; // set entire TCCR1 register to 0
   TCCR1B = 0;
@@ -85,6 +82,8 @@ void setup() {
   TCCR1B |= (1 << CS11);  // 8 prescaler: 0,5 microseconds at 16mhz
   TIMSK1 |= (1 << OCIE1A); // enable timer compare interrupt
 
+  elapsedUs = 0;
+  currentChannelNumber = 0;
   state = true;
   sei();
 }
@@ -93,13 +92,11 @@ void drive(int cmd1, int cmd2) {
   steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
   speed = speed * (1.0 - FILTER) + cmd2 * FILTER;
 
-  steerCoefficient = mapf(constrain(cmd2, 0, 1000), 0, 1000, STEER_COEFFICIENT_MAX, STEER_COEFFICIENT_MIN);
+  // Change steering behaviour depending on speed
+  steerCoefficient = mapf(constrain(speed, 0, 1000), 0, 1000, STEER_COEFFICIENT_MAX, STEER_COEFFICIENT_MIN);
 
   speedR = constrain(speed * SPEED_COEFFICIENT - steer * steerCoefficient, MAX_SPEED_BACKWARD, MAX_SPEED_FORWARD);
   speedL = constrain(speed * SPEED_COEFFICIENT + steer * steerCoefficient, MAX_SPEED_BACKWARD, MAX_SPEED_FORWARD);
-
-  Serial.print("R: "); Serial.print(speedR);
-  Serial.print(" L: "); Serial.println(speedL);
 
   setSpeed(WHEEL_FRONT_LEFT, speedL);
   setSpeed(WHEEL_BACK_LEFT, speedL * -1);
@@ -117,20 +114,15 @@ void loop() {
     cmd1 = constrain((nunchuk.analogX - 127) * 8, -1000, 1000);
     cmd2 = constrain((nunchuk.analogY - 128) * 8, -1000, 1000);
 
+    // If backwards, invert steering
     if (cmd2 < 0) {
       cmd1 *= -1;
     }
 
-/*
-    Serial.print("X: ");
-    Serial.println(nunchuk.analogX);
-
-    Serial.print("Y: ");
-    Serial.println(nunchuk.analogY);
-*/
     return drive(cmd1, cmd2);
   } 
 
+  // Failed to read nunchuck!
   consecutiveFails++;
   Serial.println("FAIL!");
   delay(20);
@@ -138,6 +130,7 @@ void loop() {
   if (consecutiveFails > 15) {
     Serial.println("SAFETY");
     
+    // Ramp speed down as long as there's no signal
     while (!nunchuk.update()) {
       cmd1 = (cmd1 < 0) ? max(0, cmd1 + 10) : min(0, cmd1 -10);
       cmd2 = (cmd2 < 0) ? max(0, cmd2 + 10) : min(0, cmd2 -10);
@@ -153,6 +146,8 @@ void loop() {
   }
 }
 
+// PPM SIGNAL GENERATION
+// Please don't touch. Was hard to code :P
 ISR(TIMER1_COMPA_vect) {
   TCNT1 = 0;
 
