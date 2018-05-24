@@ -8,7 +8,7 @@
 #define PPM_CHANNELS_PULSE_LENGTH_uS 500
 #define OUTPUT_PIN 11
 
-#define PPM_MIN_VALUE 1000
+#define PPM_MIN_VALUE 500
 #define PPM_MAX_VALUE 2500
 
 #define WHEEL_FRONT_LEFT 0
@@ -22,6 +22,8 @@
 #define STEER_COEFFICIENT_MAX 0.55
 #define SPEED_COEFFICIENT 0.4
 
+#define MAX_SPEED_FORWARD 1000
+#define MAX_SPEED_BACKWARD -500
 
 float steerCoefficient = 0.4;
 
@@ -42,6 +44,14 @@ int speedR;
 ArduinoNunchuk nunchuk = ArduinoNunchuk();
 
 uint16_t consecutiveFails = 0;
+
+void setSpeed(uint8_t channel, int16_t speed) {
+  setPPM(channel, map(speed, -1000, 1000, PPM_MIN_VALUE, PPM_MAX_VALUE));
+}
+
+void setPPM(uint8_t channel, uint16_t value) {
+  PPM_CHANNELS[channel] = constrain(value, PPM_MIN_VALUE, PPM_MAX_VALUE);
+}
 
 float mapf(float x, float in_min, float in_max, float out_min, float out_max){
  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
@@ -79,29 +89,23 @@ void setup() {
   sei();
 }
 
-
-void setSpeedLeft(int speed) {
-  PPM_CHANNELS[WHEEL_FRONT_LEFT] = map(speed, -1000, 1000, 500, 2500);
-  PPM_CHANNELS[WHEEL_BACK_LEFT] = map(speed * -1, -1000, 1000, 500, 2500);
-}
-
-
-void setSpeedRight(int speed) {
-  PPM_CHANNELS[WHEEL_FRONT_RIGHT] = map(speed, -1000, 1000, 500, 2500);
-  PPM_CHANNELS[WHEEL_BACK_RIGHT] = map(speed * -1, -1000, 1000, 500, 2500);
-}
-
 void drive(int cmd1, int cmd2) {
   steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
   speed = speed * (1.0 - FILTER) + cmd2 * FILTER;
 
   steerCoefficient = mapf(constrain(cmd2, 0, 1000), 0, 1000, STEER_COEFFICIENT_MAX, STEER_COEFFICIENT_MIN);
 
-  speedR = constrain(speed * SPEED_COEFFICIENT - steer * steerCoefficient, -1000, 1000);
-  speedL = constrain(speed * SPEED_COEFFICIENT + steer * steerCoefficient, -1000, 1000);
+  speedR = constrain(speed * SPEED_COEFFICIENT - steer * steerCoefficient, MAX_SPEED_BACKWARD, MAX_SPEED_FORWARD);
+  speedL = constrain(speed * SPEED_COEFFICIENT + steer * steerCoefficient, MAX_SPEED_BACKWARD, MAX_SPEED_FORWARD);
 
-  setSpeedLeft(speedL);
-  setSpeedRight(speedR);
+  Serial.print("R: "); Serial.print(speedR);
+  Serial.print(" L: "); Serial.println(speedL);
+
+  setSpeed(WHEEL_FRONT_LEFT, speedL);
+  setSpeed(WHEEL_BACK_LEFT, speedL * -1);
+
+  setSpeed(WHEEL_FRONT_RIGHT, speedR);
+  setSpeed(WHEEL_BACK_RIGHT, speedR * -1);
 }
 
 void loop() {
@@ -110,19 +114,20 @@ void loop() {
   if (nunchuk.update()) {
     consecutiveFails = 0;
 
-    cmd1 = constrain((nunchuk.analogX - 127) * 8, -500, 1000);
-    cmd2 = constrain((nunchuk.analogY - 128) * 8, -500, 1000);
+    cmd1 = constrain((nunchuk.analogX - 127) * 8, -1000, 1000);
+    cmd2 = constrain((nunchuk.analogY - 128) * 8, -1000, 1000);
 
     if (cmd2 < 0) {
       cmd1 *= -1;
     }
 
+/*
     Serial.print("X: ");
     Serial.println(nunchuk.analogX);
 
     Serial.print("Y: ");
     Serial.println(nunchuk.analogY);
-
+*/
     return drive(cmd1, cmd2);
   } 
 
@@ -131,27 +136,17 @@ void loop() {
   delay(20);
 
   if (consecutiveFails > 15) {
-
     Serial.println("SAFETY");
     
     while (!nunchuk.update()) {
-
-      if (cmd1 < 0) {
-        cmd1 = max(0, cmd1 + 10);
-      } else if (cmd1 > 0) {
-        cmd1 = min(0, cmd1 - 10);
-      }
-
-      if (cmd2 < 0) {
-        cmd2 = max(0, cmd2 + 10);
-      } else if (cmd2 > 0) {
-        cmd2 = min(0, cmd2 - 10);
-      }
+      cmd1 = (cmd1 < 0) ? max(0, cmd1 + 10) : min(0, cmd1 -10);
+      cmd2 = (cmd2 < 0) ? max(0, cmd2 + 10) : min(0, cmd2 -10);
 
       drive(cmd1, cmd2);
       delay(6);
     }
 
+    // Try to reinitialize nunchuck!
     delay(1000);
     nunchuk.begin();
     delay(1000);
