@@ -18,7 +18,7 @@
 #define WHEEL_FRONT_RIGHT 3
 
 #define FILTER 0.1
-#define STEER_COEFFICIENT_MIN 0.30
+#define STEER_COEFFICIENT_MIN 0.35
 #define STEER_COEFFICIENT_MAX 0.55
 #define SPEED_COEFFICIENT 0.4
 
@@ -94,6 +94,9 @@ void drive(int cmd1, int cmd2) {
 
   // Change steering behaviour depending on speed
   steerCoefficient = mapf(constrain(abs(speed), 0, 1000), 0, 1000, STEER_COEFFICIENT_MAX, STEER_COEFFICIENT_MIN);
+  if (speed < 0) {
+    steerCoefficient = 0.4;
+  }
 
   speedR = constrain(speed * SPEED_COEFFICIENT - steer * steerCoefficient, MAX_SPEED_BACKWARD, MAX_SPEED_FORWARD);
   speedL = constrain(speed * SPEED_COEFFICIENT + steer * steerCoefficient, MAX_SPEED_BACKWARD, MAX_SPEED_FORWARD);
